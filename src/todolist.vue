@@ -11,6 +11,9 @@
     </form>
 
     <div v-if="loading" class="loading">Loading todos...</div>
+    <div v-if="showToast" class="toast">
+      {{ toastMessage }}
+    </div>
 
     <ul class="todo-list" v-else>
       <li v-for="todo in todos" :key="todo.id" class="todo-item">
@@ -31,6 +34,8 @@ export default {
       todos: [],
       newTodoTitle: "",
       loading: false,
+      toastMessage: "",
+      showToast: false
     };
   },
   async created() {
@@ -51,31 +56,52 @@ export default {
     async createTodo() {
       if (!this.newTodoTitle.trim()) return;
 
-      this.loading = true;
       try {
-        await todoApi.create({ title: this.newTodoTitle, isDone: false });
+        const response = await todoApi.create({ title: this.newTodoTitle, isDone: false });
+        const newTodo = response.data;
+        this.todos.push(newTodo); // ✅ Add directly!
         this.newTodoTitle = "";
-        await this.fetchTodos();
+        this.showToastMessage("✅ Todo created successfully!");
       } catch (error) {
         console.error("Failed to create todo:", error);
+        this.showToastMessage("❌ Failed to create todo.");
+      } finally {
+        this.loading = false;
       }
     },
+
     async updateTodo(todo) {
       try {
         await todoApi.update(todo.id, todo);
+        this.showToastMessage("✅ Todo updated!");
       } catch (error) {
         console.error("Failed to update todo:", error);
+        this.showToastMessage("❌ Failed to update todo.");
       }
     },
+
     async deleteTodo(id) {
-      this.loading = true;
       try {
         await todoApi.delete(id);
-        await this.fetchTodos();
+        this.todos = this.todos.filter(todo => todo.id !== id); // ✅ Remove from list
+        this.showToastMessage("🗑️ Todo deleted!");
       } catch (error) {
         console.error("Failed to delete todo:", error);
+        this.showToastMessage("❌ Failed to delete todo.");
+      } finally {
+        this.loading = false;
       }
     },
+
+
+    showToastMessage(message) {
+      this.toastMessage = message;
+      this.showToast = true;
+      setTimeout(() => {
+        this.showToast = false;
+      }, 3000); // Toast disappears after 3 seconds
+    },
+
   },
 };
 </script>
@@ -155,4 +181,24 @@ h1 {
   text-align: center;
   margin-top: 20px;
 }
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #42b983;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 5px;
+  box-shadow: 0 0 10px #000;
+  z-index: 1000;
+  animation: fadeInOut 3s forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-20px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
 </style>
